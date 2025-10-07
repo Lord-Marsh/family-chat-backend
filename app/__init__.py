@@ -70,8 +70,9 @@ def create_app(config_name='default'):
     # Store db in app config for access in routes
     app.db = db
     
-    # Initialize SocketIO
-    socketio.init_app(app, cors_allowed_origins="*", async_mode='eventlet')
+    # Initialize SocketIO with threading mode (default)
+    # Removed async_mode='eventlet' for Python 3.13 compatibility
+    socketio.init_app(app, cors_allowed_origins="*")
     
     # Register blueprints
     from app.routes.auth_routes import auth_bp

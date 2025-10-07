@@ -1,7 +1,3 @@
-# IMPORTANT: Monkey patch MUST be first, before any other imports!
-import eventlet
-eventlet.monkey_patch()
-
 import os
 from app import create_app, socketio
 
