@@ -1,0 +1,42 @@
+[
+    {
+        "_id": "USR001",
+        "username": "faseeh",
+        "displayName": "Faseeh",
+        "email": "adnanfaseehms@gmail.com",
+        "userType": "sa",
+        "avatar": "",
+        "password": "scrypt:32768:8:1$I0t9KbVsrySUnO6E$e9d18b62b2448042bdf9707ccfa09993f21f67723f1a959e7ba48e5bbd6d0c11c5d1fefd2ebdc7a82ffcf27766d92e7e54aa6a79858de0f7934ff254f8cdf50e",
+        "createdAt": "2026-08-04T00:00:00+05:30"
+    },
+    {
+        "_id": "USR002",
+        "username": "sudhakaran",
+        "displayName": "Sudhakaran",
+        "email": "sudhakaranmani2003@gmail.com",
+        "userType": "a",
+        "avatar": "",
+        "password": "scrypt:32768:8:1$XJPM0ObJcwZ2bynV$1c700b69cc1387af0a1f88e7909a5f8e182d1d74bb9e497949e3b8b6256401b5655352be9fe5c08ac66049ea1bcfbe240750d96fb1dc4dbecd51e04a234679b5",
+        "createdAt": "2026-08-04T00:00:00+05:30"
+    },
+    {
+        "_id": "USR003",
+        "username": "yoganathan",
+        "displayName": "Yoganathan",
+        "email": "yogan4903@gmail.com",
+        "userType": "a",
+        "avatar": "",
+        "password": "scrypt:32768:8:1$Q0uiTliHOM5Y98q7$e8ac650bc1488d849b935a6c887e715c9f5333fba43cac9b19ba84c7f6ce0a0745af00609f7cec5653a58ddf868afd59be1f34a68c5aedadf2ae778fad4cad5f",
+        "createdAt": "2026-08-04T00:00:00+05:30"
+    },
+    {
+        "_id": "USR004",
+        "username": "hari",
+        "displayName": "Hari",
+        "email": "harisidh0006@gmail.com",
+        "userType": "a",
+        "avatar": "",
+        "password": "scrypt:32768:8:1$576jmClsw9mWB1y2$aaf66410f9652bfce09bff7d0a723bb2722a217617bdc70ddddf12d6dae4c02309471fa6e70ca825e10ec5f175f0065cf57f2e26642b7d1b316b985fd663822f",
+        "createdAt": "2026-08-04T00:00:00+05:30"
+    }
+]

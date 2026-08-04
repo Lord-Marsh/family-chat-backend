@@ -1,0 +1,51 @@
+[
+    {
+        "_id": "CAT-001",
+        "name": "Food",
+        "icon": "food",
+        "createdBy": "system",
+        "createdAt": "2026-08-04T00:00:00+05:30"
+    },
+    {
+        "_id": "CAT-002",
+        "name": "Snacks",
+        "icon": "snacks",
+        "createdBy": "system",
+        "createdAt": "2026-08-04T00:00:00+05:30"
+    },
+    {
+        "_id": "CAT-003",
+        "name": "Groceries",
+        "icon": "groceries",
+        "createdBy": "system",
+        "createdAt": "2026-08-04T00:00:00+05:30"
+    },
+    {
+        "_id": "CAT-004",
+        "name": "Transport",
+        "icon": "transport",
+        "createdBy": "system",
+        "createdAt": "2026-08-04T00:00:00+05:30"
+    },
+    {
+        "_id": "CAT-005",
+        "name": "Bills",
+        "icon": "bills",
+        "createdBy": "system",
+        "createdAt": "2026-08-04T00:00:00+05:30"
+    },
+    {
+        "_id": "CAT-006",
+        "name": "Recharge",
+        "icon": "recharge",
+        "createdBy": "system",
+        "createdAt": "2026-08-04T00:00:00+05:30"
+    },
+    {
+        "_id": "CAT-007",
+        "name": "Other",
+        "icon": "other",
+        "createdBy": "system",
+        "createdAt": "2026-08-04T00:00:00+05:30"
+    }
+]
