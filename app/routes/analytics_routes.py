@@ -28,7 +28,7 @@ def get_expense_analytics(current_user_id):
     weekly_totals = defaultdict(float)
     monthly_totals = defaultdict(float)
     
-    sorted_by_amount = sorted(splits, key=lambda x: x.get('totalAmount', 0), reverse=True)
+    sorted_by_amount = sorted(splits, key=lambda x: float(x.get('totalAmount', 0)), reverse=True)
     top_expenses = sorted_by_amount[:5]
     
     for split in splits:
@@ -68,7 +68,7 @@ def get_expense_analytics(current_user_id):
     weekly_data = [{'week': k, 'amount': round(v, 2)} for k, v in sorted(weekly_totals.items())]
     
     top_expenses_mapped = []
-    users = {u['_id']: u.get('displayName', u['username']) for u in db.users.find()}
+    users = {u.get('_id'): u.get('displayName', u.get('username', 'Unknown')) for u in db.users.find()}
     for s in top_expenses:
         top_expenses_mapped.append({
             'id': s['_id'],
