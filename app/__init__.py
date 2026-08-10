@@ -50,6 +50,7 @@ def create_app(config_name='default'):
     from app.routes.user_routes import user_bp
     from app.routes.log_routes import log_bp
     from app.routes.category_routes import category_bp
+    from app.routes.analytics_routes import analytics_bp
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(split_bp, url_prefix='/api/splits')
@@ -57,6 +58,7 @@ def create_app(config_name='default'):
     app.register_blueprint(user_bp, url_prefix='/api/users')
     app.register_blueprint(log_bp, url_prefix='/api/logs')
     app.register_blueprint(category_bp, url_prefix='/api/categories')
+    app.register_blueprint(analytics_bp, url_prefix='/api/analytics')
 
     # Import socket events
     from app.sockets import split_events
