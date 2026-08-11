@@ -3,7 +3,7 @@ from flask import Blueprint, request, jsonify, Response
 from app import get_db
 from app.utils.auth import token_required, create_jwt_token
 from app.utils.id_generator import generate_login_log_id
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 import base64
 import json
@@ -22,7 +22,8 @@ from webauthn.helpers.structs import (
     AuthenticatorSelectionCriteria,
     UserVerificationRequirement,
     AuthenticatorAttachment,
-    PublicKeyCredentialDescriptor
+    PublicKeyCredentialDescriptor,
+    ResidentKeyRequirement
 )
 
 webauthn_bp = Blueprint('webauthn', __name__)
@@ -60,7 +61,8 @@ def register_generate(current_user_id):
         exclude_credentials=exclude_credentials,
         authenticator_selection=AuthenticatorSelectionCriteria(
             authenticator_attachment=AuthenticatorAttachment.PLATFORM,
-            user_verification=UserVerificationRequirement.REQUIRED
+            user_verification=UserVerificationRequirement.REQUIRED,
+            resident_key=ResidentKeyRequirement.REQUIRED
         )
     )
 
@@ -116,36 +118,27 @@ def register_verify(current_user_id):
 @webauthn_bp.route('/login/generate', methods=['POST'])
 def login_generate():
     origin, rp_id = get_origin_and_rp_id()
-    data = request.get_json()
-    username = data.get('username')
-    if not username:
-        return jsonify({'message': 'Username is required'}), 400
-        
     db = get_db()
-    user = db.users.find_one({'username': username})
-    if not user:
-        return jsonify({'message': 'User not found'}), 404
-        
-    credentials = user.get('webauthn_credentials', [])
-    if not credentials:
-        return jsonify({'message': 'No fingerprints registered for this user'}), 400
-        
-    allow_credentials = [
-        PublicKeyCredentialDescriptor(id=base64url_to_bytes(cred['credential_id']))
-        for cred in credentials
-    ]
     
+    # We don't require a username anymore! Discoverable credentials allow an empty allow_credentials list.
     options = generate_authentication_options(
         rp_id=rp_id,
-        allow_credentials=allow_credentials,
+        allow_credentials=[],
         user_verification=UserVerificationRequirement.REQUIRED
     )
     
     challenge_str = base64.urlsafe_b64encode(options.challenge).decode('utf-8')
-    db.users.update_one(
-        {'_id': user['_id']},
-        {'$set': {'current_webauthn_challenge': challenge_str}}
-    )
+    
+    # Store the challenge globally since we don't know the user yet
+    db.auth_challenges.insert_one({
+        'challenge': challenge_str,
+        'createdAt': datetime.now(IST)
+    })
+    
+    # Clean up old challenges to prevent database bloat
+    db.auth_challenges.delete_many({
+        'createdAt': {'$lt': datetime.now(IST) - timedelta(minutes=10)}
+    })
     
     return Response(options_to_json(options), mimetype='application/json')
 
@@ -153,34 +146,48 @@ def login_generate():
 def login_verify():
     origin, rp_id = get_origin_and_rp_id()
     data = request.get_json()
-    username = data.get('username')
     credential_data = data.get('credential')
     
-    if not username or not credential_data:
-        return jsonify({'message': 'Missing data'}), 400
+    if not credential_data:
+        return jsonify({'message': 'Missing credential data'}), 400
         
     db = get_db()
-    user = db.users.find_one({'username': username})
+    
+    incoming_id = credential_data.get('id', '')
+    user = db.users.find_one({
+        '$or': [
+            {'webauthn_credentials.credential_id': incoming_id},
+            {'webauthn_credentials.credential_id': incoming_id.rstrip('=')}
+        ]
+    })
+    
     if not user:
-        return jsonify({'message': 'User not found'}), 404
-        
-    expected_challenge = user.get('current_webauthn_challenge')
-    if not expected_challenge:
-        return jsonify({'message': 'No challenge found'}), 400
+        return jsonify({'message': 'Unregistered fingerprint or device not recognized.'}), 404
         
     # Find the specific credential
     credentials = user.get('webauthn_credentials', [])
-    matching_cred = None
-    
-    # We need to pad the incoming credential.id with '=' if necessary
-    incoming_id = credential_data.get('id', '')
-    for cred in credentials:
-        if cred['credential_id'] == incoming_id or cred['credential_id'] == incoming_id.rstrip('='):
-            matching_cred = cred
-            break
+    matching_cred = next((c for c in credentials if c['credential_id'] in (incoming_id, incoming_id.rstrip('='))), None)
             
     if not matching_cred:
-        return jsonify({'message': 'Credential not registered for this user'}), 400
+        return jsonify({'message': 'Credential mismatch'}), 400
+
+    # Retrieve the challenge from our global collection. 
+    # The client must send back the challenge they signed, or we just find ANY valid recent challenge?
+    # Actually, verify_authentication_response requires exactly the expected challenge.
+    # We can ask the client to send the challenge back, or we look it up by the base64url challenge in clientDataJSON.
+    
+    # Extract the challenge from the clientDataJSON
+    client_data_json_b64 = credential_data.get('response', {}).get('clientDataJSON')
+    if not client_data_json_b64:
+        return jsonify({'message': 'Invalid response from authenticator'}), 400
+        
+    client_data_json = json.loads(base64url_to_bytes(client_data_json_b64).decode('utf-8'))
+    expected_challenge = client_data_json.get('challenge')
+    
+    # Verify this challenge actually exists in our DB and is valid
+    challenge_doc = db.auth_challenges.find_one_and_delete({'challenge': expected_challenge})
+    if not challenge_doc:
+        return jsonify({'message': 'Invalid or expired challenge'}), 400
 
     try:
         verification = verify_authentication_response(
@@ -196,16 +203,11 @@ def login_verify():
         # Update sign count
         db.users.update_one(
             {'_id': user['_id'], 'webauthn_credentials.credential_id': matching_cred['credential_id']},
-            {
-                '$set': {'webauthn_credentials.$.sign_count': verification.new_sign_count},
-                '$unset': {'current_webauthn_challenge': ""}
-            }
+            {'$set': {'webauthn_credentials.$.sign_count': verification.new_sign_count}}
         )
         
-        # Generate token
         token = create_jwt_token(user['_id'])
         
-        # Log success
         success_log = {
             '_id': generate_login_log_id(),
             'userId': user['_id'],
@@ -231,7 +233,6 @@ def login_verify():
         }), 200
         
     except Exception as e:
-        # Log failure
         failed_log = {
             '_id': generate_login_log_id(),
             'userId': user['_id'],
