@@ -53,7 +53,7 @@ def register_generate(current_user_id):
     options = generate_registration_options(
         rp_id=rp_id,
         rp_name=RP_NAME,
-        user_id=user['_id'].encode('utf-8'),
+        user_id=str(user['_id']).encode('utf-8'),
         user_name=user['username'],
         user_display_name=user.get('displayName', user['username']),
         exclude_credentials=exclude_credentials,
