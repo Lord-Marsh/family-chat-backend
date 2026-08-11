@@ -1,5 +1,5 @@
 import os
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, Response
 from app import get_db
 from app.utils.auth import token_required, create_jwt_token
 from app.utils.id_generator import generate_login_log_id
@@ -26,22 +26,24 @@ from webauthn.helpers.structs import (
 
 webauthn_bp = Blueprint('webauthn', __name__)
 IST = pytz.timezone('Asia/Kolkata')
-
-# Config based on environment
-PRODUCTION = os.getenv('PRODUCTION', 'false').lower() == 'true'
-RP_ID = 'family-chat-frontend-eight.vercel.app' if PRODUCTION else 'localhost'
-EXPECTED_ORIGIN = 'https://family-chat-frontend-eight.vercel.app' if PRODUCTION else 'http://localhost:5173'
 RP_NAME = 'SplitPay'
+
+def get_origin_and_rp_id():
+    origin = request.headers.get('Origin')
+    if not origin:
+        origin = 'http://localhost:5173'
+    rp_id = origin.replace('https://', '').replace('http://', '').split(':')[0]
+    return origin, rp_id
 
 @webauthn_bp.route('/register/generate', methods=['GET'])
 @token_required
 def register_generate(current_user_id):
+    origin, rp_id = get_origin_and_rp_id()
     db = get_db()
     user = db.users.find_one({'_id': current_user_id})
     if not user:
         return jsonify({'message': 'User not found'}), 404
 
-    # Extract existing credentials so they aren't re-registered
     existing_credentials = user.get('webauthn_credentials', [])
     exclude_credentials = [
         {"id": base64url_to_bytes(cred['credential_id']), "type": "public-key"}
@@ -49,30 +51,30 @@ def register_generate(current_user_id):
     ]
 
     options = generate_registration_options(
-        rp_id=RP_ID,
+        rp_id=rp_id,
         rp_name=RP_NAME,
         user_id=user['_id'].encode('utf-8'),
         user_name=user['username'],
         user_display_name=user.get('displayName', user['username']),
         exclude_credentials=exclude_credentials,
         authenticator_selection=AuthenticatorSelectionCriteria(
-            authenticator_attachment=AuthenticatorAttachment.PLATFORM, # Enforce device biometrics (fingerprint/FaceID)
+            authenticator_attachment=AuthenticatorAttachment.PLATFORM,
             user_verification=UserVerificationRequirement.REQUIRED
         )
     )
 
-    # Save challenge to DB
     challenge_str = base64.urlsafe_b64encode(options.challenge).decode('utf-8')
     db.users.update_one(
         {'_id': current_user_id},
         {'$set': {'current_webauthn_challenge': challenge_str}}
     )
 
-    return options_to_json(options), 200
+    return Response(options_to_json(options), mimetype='application/json')
 
 @webauthn_bp.route('/register/verify', methods=['POST'])
 @token_required
 def register_verify(current_user_id):
+    origin, rp_id = get_origin_and_rp_id()
     data = request.get_json()
     db = get_db()
     user = db.users.find_one({'_id': current_user_id})
@@ -85,12 +87,11 @@ def register_verify(current_user_id):
         verification = verify_registration_response(
             credential=data,
             expected_challenge=base64url_to_bytes(expected_challenge),
-            expected_rp_id=RP_ID,
-            expected_origin=EXPECTED_ORIGIN,
+            expected_rp_id=rp_id,
+            expected_origin=origin,
             require_user_verification=True
         )
         
-        # Save credential
         new_credential = {
             'credential_id': base64.urlsafe_b64encode(verification.credential_id).decode('utf-8').rstrip('='),
             'public_key': base64.urlsafe_b64encode(verification.credential_public_key).decode('utf-8'),
@@ -113,6 +114,7 @@ def register_verify(current_user_id):
 
 @webauthn_bp.route('/login/generate', methods=['POST'])
 def login_generate():
+    origin, rp_id = get_origin_and_rp_id()
     data = request.get_json()
     username = data.get('username')
     if not username:
@@ -133,7 +135,7 @@ def login_generate():
     ]
     
     options = generate_authentication_options(
-        rp_id=RP_ID,
+        rp_id=rp_id,
         allow_credentials=allow_credentials,
         user_verification=UserVerificationRequirement.REQUIRED
     )
@@ -144,10 +146,11 @@ def login_generate():
         {'$set': {'current_webauthn_challenge': challenge_str}}
     )
     
-    return options_to_json(options), 200
+    return Response(options_to_json(options), mimetype='application/json')
 
 @webauthn_bp.route('/login/verify', methods=['POST'])
 def login_verify():
+    origin, rp_id = get_origin_and_rp_id()
     data = request.get_json()
     username = data.get('username')
     credential_data = data.get('credential')
@@ -182,8 +185,8 @@ def login_verify():
         verification = verify_authentication_response(
             credential=credential_data,
             expected_challenge=base64url_to_bytes(expected_challenge),
-            expected_rp_id=RP_ID,
-            expected_origin=EXPECTED_ORIGIN,
+            expected_rp_id=rp_id,
+            expected_origin=origin,
             credential_public_key=base64url_to_bytes(matching_cred['public_key']),
             credential_current_sign_count=matching_cred['sign_count'],
             require_user_verification=True
