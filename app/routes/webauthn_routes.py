@@ -66,7 +66,7 @@ def register_generate(current_user_id):
         )
     )
 
-    challenge_str = base64.urlsafe_b64encode(options.challenge).decode('utf-8')
+    challenge_str = base64.urlsafe_b64encode(options.challenge).decode('utf-8').rstrip('=')
     db.users.update_one(
         {'_id': current_user_id},
         {'$set': {'current_webauthn_challenge': challenge_str}}
@@ -127,7 +127,7 @@ def login_generate():
         user_verification=UserVerificationRequirement.REQUIRED
     )
     
-    challenge_str = base64.urlsafe_b64encode(options.challenge).decode('utf-8')
+    challenge_str = base64.urlsafe_b64encode(options.challenge).decode('utf-8').rstrip('=')
     
     # Store the challenge globally since we don't know the user yet
     db.auth_challenges.insert_one({
