@@ -21,7 +21,8 @@ from webauthn.helpers.structs import (
     AuthenticationCredential,
     AuthenticatorSelectionCriteria,
     UserVerificationRequirement,
-    AuthenticatorAttachment
+    AuthenticatorAttachment,
+    PublicKeyCredentialDescriptor
 )
 
 webauthn_bp = Blueprint('webauthn', __name__)
@@ -46,7 +47,7 @@ def register_generate(current_user_id):
 
     existing_credentials = user.get('webauthn_credentials', [])
     exclude_credentials = [
-        {"id": base64url_to_bytes(cred['credential_id']), "type": "public-key"}
+        PublicKeyCredentialDescriptor(id=base64url_to_bytes(cred['credential_id']))
         for cred in existing_credentials
     ]
 
@@ -130,7 +131,7 @@ def login_generate():
         return jsonify({'message': 'No fingerprints registered for this user'}), 400
         
     allow_credentials = [
-        {"id": base64url_to_bytes(cred['credential_id']), "type": "public-key"}
+        PublicKeyCredentialDescriptor(id=base64url_to_bytes(cred['credential_id']))
         for cred in credentials
     ]
     
