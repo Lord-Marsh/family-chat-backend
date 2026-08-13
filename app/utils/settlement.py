@@ -41,7 +41,7 @@ def calculate_settlements(paid_by, split_among):
         
         settle_amount = min(debt_amount, credit_amount)
         
-        settle_amount = round(settle_amount, 2)
+        settle_amount = round(settle_amount)
         
         if settle_amount > 0:
             settlements.append({
