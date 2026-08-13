@@ -9,6 +9,8 @@ balance_bp = Blueprint('balances', __name__)
 def get_all_balances(current_user_id):
     db = get_db()
     splits = list(db.splits.find({'status': 'active'}))
+    # Helper for user dict
+    users_full = {u['_id']: u for u in db.users.find()}
     users = {u['_id']: u.get('displayName', u['username']) for u in db.users.find()}
     
     pair_balances = {}
@@ -33,7 +35,7 @@ def get_all_balances(current_user_id):
                     
                 pair_balances[pair_key]['details'].append({
                     'description': split.get('description', 'Unknown Split'),
-                    'amount': round(amt, 2),
+                    'amount': round(amt),
                     'fromUserId': from_id,
                     'toUserId': to_id,
                     'fromUserName': users.get(from_id, 'Unknown'),
@@ -57,18 +59,21 @@ def get_all_balances(current_user_id):
                 from_user, to_user = pair[1], pair[0]
                 amt = abs(net_amt)
                 
+            from_u = users_full.get(from_user, {})
+            to_u = users_full.get(to_user, {})
+            
             balances_list.append({
-                'fromUser': {'id': from_user, 'displayName': users.get(from_user, 'Unknown')},
-                'toUser': {'id': to_user, 'displayName': users.get(to_user, 'Unknown')},
-                'amount': round(amt, 2),
+                'fromUser': {'id': from_user, 'displayName': from_u.get('displayName', from_u.get('username', 'Unknown')), 'upiId': from_u.get('upiId')},
+                'toUser': {'id': to_user, 'displayName': to_u.get('displayName', to_u.get('username', 'Unknown')), 'upiId': to_u.get('upiId')},
+                'amount': round(amt),
                 'details': data['details']
             })
             
     # Round summary
     for k in summary:
-        summary[k]['owes'] = round(summary[k]['owes'], 2)
-        summary[k]['isOwed'] = round(summary[k]['isOwed'], 2)
-        summary[k]['net'] = round(summary[k]['net'], 2)
+        summary[k]['owes'] = round(summary[k]['owes'])
+        summary[k]['isOwed'] = round(summary[k]['isOwed'])
+        summary[k]['net'] = round(summary[k]['net'])
         
     return jsonify({'balances': balances_list, 'summary': summary}), 200
 
@@ -109,11 +114,11 @@ def get_user_summary(current_user_id):
                 del owed_to_you_dict[user_id]
                 
     you_owe = [
-        {'toUser': {'id': uid, 'displayName': users.get(uid, 'Unknown')}, 'amount': round(amt, 2)}
+        {'toUser': {'id': uid, 'displayName': users.get(uid, 'Unknown')}, 'amount': round(amt)}
         for uid, amt in you_owe_dict.items()
     ]
     owed_to_you = [
-        {'fromUser': {'id': uid, 'displayName': users.get(uid, 'Unknown')}, 'amount': round(amt, 2)}
+        {'fromUser': {'id': uid, 'displayName': users.get(uid, 'Unknown')}, 'amount': round(amt)}
         for uid, amt in owed_to_you_dict.items()
     ]
     
@@ -122,5 +127,5 @@ def get_user_summary(current_user_id):
     return jsonify({
         'youOwe': you_owe,
         'owedToYou': owed_to_you,
-        'netBalance': round(net_balance, 2)
+        'netBalance': round(net_balance)
     }), 200

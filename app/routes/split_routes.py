@@ -39,7 +39,7 @@ def create_split(current_user_id):
     split_among = data.get('splitAmong', [])
     
     if data.get('splitType') == 'equal':
-        share = round(total_amount / len(split_among), 2) if split_among else 0
+        share = round(total_amount / len(split_among)) if split_among else 0
         for p in split_among:
             p['share'] = share
             
@@ -119,6 +119,7 @@ def get_split(current_user_id, split_id):
     if not split:
         return jsonify({'message': 'Split not found'}), 404
         
+    users_full = {u['_id']: u for u in db.users.find()}
     users = {u['_id']: u.get('displayName', u['username']) for u in db.users.find()}
     
     for p in split.get('paidBy', []):
@@ -128,6 +129,7 @@ def get_split(current_user_id, split_id):
     for stl in split.get('settlements', []):
         stl['fromDisplayName'] = users.get(stl['fromUserId'], 'Unknown')
         stl['toDisplayName'] = users.get(stl['toUserId'], 'Unknown')
+        stl['toUserUpiId'] = users_full.get(stl['toUserId'], {}).get('upiId')
         
     return jsonify(split), 200
 
@@ -146,7 +148,7 @@ def update_split(current_user_id, current_user, split_id):
     paid_by = data.get('paidBy', split['paidBy'])
     
     if data.get('splitType') == 'equal':
-        share = round(total_amount / len(split_among), 2) if split_among else 0
+        share = round(total_amount / len(split_among)) if split_among else 0
         for p in split_among:
             p['share'] = share
             
