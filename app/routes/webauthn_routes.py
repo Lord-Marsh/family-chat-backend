@@ -228,7 +228,8 @@ def login_verify():
                 'displayName': user.get('displayName', user['username']),
                 'email': user.get('email'),
                 'avatar': user.get('avatar'),
-                'userType': user.get('userType', 'a')
+                'userType': user.get('userType', 'a'),
+                'upiId': user.get('upiId')
             }
         }), 200
         
