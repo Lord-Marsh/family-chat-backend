@@ -24,12 +24,21 @@ def get_all_balances(current_user_id):
                 # Pair logic
                 pair_key = tuple(sorted([from_id, to_id]))
                 if pair_key not in pair_balances:
-                    pair_balances[pair_key] = 0
+                    pair_balances[pair_key] = {'amount': 0, 'details': []}
                     
                 if from_id == pair_key[0]:
-                    pair_balances[pair_key] += amt
+                    pair_balances[pair_key]['amount'] += amt
                 else:
-                    pair_balances[pair_key] -= amt
+                    pair_balances[pair_key]['amount'] -= amt
+                    
+                pair_balances[pair_key]['details'].append({
+                    'description': split.get('description', 'Unknown Split'),
+                    'amount': round(amt, 2),
+                    'fromUserId': from_id,
+                    'toUserId': to_id,
+                    'fromUserName': users.get(from_id, 'Unknown'),
+                    'toUserName': users.get(to_id, 'Unknown')
+                })
                     
                 # Summary logic
                 summary[from_id]['owes'] += amt
@@ -38,7 +47,8 @@ def get_all_balances(current_user_id):
                 summary[to_id]['net'] += amt
                 
     balances_list = []
-    for pair, net_amt in pair_balances.items():
+    for pair, data in pair_balances.items():
+        net_amt = data['amount']
         if abs(net_amt) > 0.01:
             if net_amt > 0:
                 from_user, to_user = pair[0], pair[1]
@@ -50,7 +60,8 @@ def get_all_balances(current_user_id):
             balances_list.append({
                 'fromUser': {'id': from_user, 'displayName': users.get(from_user, 'Unknown')},
                 'toUser': {'id': to_user, 'displayName': users.get(to_user, 'Unknown')},
-                'amount': round(amt, 2)
+                'amount': round(amt, 2),
+                'details': data['details']
             })
             
     # Round summary
