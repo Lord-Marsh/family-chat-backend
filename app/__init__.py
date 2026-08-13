@@ -37,6 +37,10 @@ def create_app(config_name='default'):
     from app.utils.migration import run_migration
     run_migration(db)
 
+    # Run WA migration
+    from app.utils.migration_wa import run_wa_migration
+    run_wa_migration(db)
+
     # Setup indexes
     db.users.create_index([("username", pymongo.ASCENDING)], unique=True)
     db.users.create_index([("email", pymongo.ASCENDING)], unique=True)

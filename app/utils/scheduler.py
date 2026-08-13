@@ -32,17 +32,39 @@ def check_pending_settlements(app):
                         debtor = db.users.find_one({'_id': settlement['fromUserId']})
                         creditor = db.users.find_one({'_id': settlement['toUserId']})
                         
-                        if debtor and creditor and debtor.get('email'):
-                            send_reminder_email(
-                                to_email=debtor['email'],
-                                debtor_name=debtor.get('displayName', debtor['username']),
-                                creditor_name=creditor.get('displayName', creditor['username']),
-                                amount=settlement['amount'],
-                                split_description=split.get('description', 'Untitled Split'),
-                                split_date=split.get('createdAt').strftime('%Y-%m-%d %H:%M:%S'),
-                                split_id=split['_id'],
-                                db=db
-                            )
+                        if debtor and creditor:
+                            if debtor.get('email'):
+                                send_reminder_email(
+                                    to_email=debtor['email'],
+                                    debtor_name=debtor.get('displayName', debtor['username']),
+                                    creditor_name=creditor.get('displayName', creditor['username']),
+                                    amount=settlement['amount'],
+                                    split_description=split.get('description', 'Untitled Split'),
+                                    split_date=split.get('createdAt').strftime('%Y-%m-%d %H:%M:%S'),
+                                    split_id=split['_id'],
+                                    db=db
+                                )
+                                
+                            # Check if WA reminder was sent in last 24h
+                            from app.utils.whatsapp_service import send_whatsapp_reminder
+                            recent_wa_log = db.whatsapp_logs.find_one({
+                                'splitId': split['_id'],
+                                'phone': debtor.get('phone'),
+                                'timestamp': {'$gt': twenty_four_hours_ago},
+                                'status': 'success'
+                            })
+
+                            if not recent_wa_log and debtor.get('phone'):
+                                send_whatsapp_reminder(
+                                    phone_number=debtor['phone'],
+                                    debtor_name=debtor.get('displayName', debtor['username']),
+                                    amount=settlement['amount'],
+                                    creditor_name=creditor.get('displayName', creditor['username']),
+                                    split_description=split.get('description', 'Untitled Split'),
+                                    split_date=split.get('createdAt').strftime('%d %b %Y'),
+                                    split_id=split['_id'],
+                                    db=db
+                                )
 
 def init_scheduler(app):
     if not scheduler.running:
