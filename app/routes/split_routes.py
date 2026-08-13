@@ -300,6 +300,45 @@ def revert_settlement(current_user_id, split_id, settlement_id):
     
     updated_split = db.splits.find_one({'_id': split_id})
     log_activity(db, 'revert_settlement', current_user_id, {'splitId': split_id, 'settlementId': settlement_id})
-    socketio.emit('settlement_updated', serialize_doc(updated_split), to='splitpay_room')
+    socketio.emit('split_updated', {'splitId': split_id})
+    return jsonify({'message': 'Settlement reverted successfully'})
+
+@split_bp.route('/remind-all-whatsapp', methods=['POST'])
+@token_required
+@sa_required
+def remind_all_whatsapp(current_user_id):
+    from app import get_db
+    from app.utils.whatsapp_service import send_whatsapp_reminder
+    db = get_db()
     
-    return jsonify(updated_split), 200
+    # Get all active splits
+    splits = list(db.splits.find({'status': 'active'}))
+    messages_sent = 0
+    failed_messages = 0
+    
+    for split in splits:
+        for settlement in split.get('settlements', []):
+            if settlement['status'] == 'pending':
+                debtor = db.users.find_one({'_id': settlement['fromUserId']})
+                creditor = db.users.find_one({'_id': settlement['toUserId']})
+                
+                if debtor and creditor and debtor.get('phone'):
+                    success = send_whatsapp_reminder(
+                        phone_number=debtor['phone'],
+                        debtor_name=debtor.get('displayName', debtor['username']),
+                        amount=settlement['amount'],
+                        creditor_name=creditor.get('displayName', creditor['username']),
+                        split_description=split.get('description', 'Untitled Split'),
+                        split_date=split.get('createdAt').strftime('%d %b %Y'),
+                        split_id=split['_id'],
+                        db=db
+                    )
+                    if success:
+                        messages_sent += 1
+                    else:
+                        failed_messages += 1
+                        
+    log_activity(db, 'admin_wa_remind_all', current_user_id, {'sent': messages_sent, 'failed': failed_messages})
+    return jsonify({
+        'message': f'Reminder blast complete. {messages_sent} sent, {failed_messages} failed.'
+    }), 200
