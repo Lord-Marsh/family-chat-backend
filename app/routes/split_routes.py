@@ -304,9 +304,8 @@ def revert_settlement(current_user_id, split_id, settlement_id):
     return jsonify({'message': 'Settlement reverted successfully'})
 
 @split_bp.route('/remind-all-whatsapp', methods=['POST'])
-@token_required
 @sa_required
-def remind_all_whatsapp(current_user_id):
+def remind_all_whatsapp(current_user_id, current_user):
     from app import get_db
     from app.utils.whatsapp_service import send_whatsapp_reminder
     db = get_db()
