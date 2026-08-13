@@ -53,7 +53,20 @@ def get_all_balances(current_user_id):
     sudhakaran_id = next((uid for uid, name in users.items() if (name or '').lower() == 'sudhakaran'), None)
     hari_id = next((uid for uid, name in users.items() if (name or '').lower() == 'hari'), None)
     
-    if faseeh_id and sudhakaran_id:
+    # Check if they actually paid in the specific split
+    target_split = db.splits.find_one({'_id': 'SPL-20260812-213817-201A'})
+    apply_sudhakaran = False
+    apply_hari = False
+    
+    if target_split:
+        for stl in target_split.get('settlements', []):
+            if stl['status'] == 'pending':
+                if stl['fromUserId'] == sudhakaran_id and stl['toUserId'] == faseeh_id:
+                    apply_sudhakaran = True
+                if stl['fromUserId'] == hari_id and stl['toUserId'] == faseeh_id:
+                    apply_hari = True
+                    
+    if apply_sudhakaran and faseeh_id and sudhakaran_id:
         pair_key = tuple(sorted([faseeh_id, sudhakaran_id]))
         if pair_key not in pair_balances:
             pair_balances[pair_key] = {'amount': 0, 'details': []}
@@ -66,7 +79,7 @@ def get_all_balances(current_user_id):
         summary[faseeh_id]['isOwed'] += 15
         summary[faseeh_id]['net'] += 15
         
-    if faseeh_id and hari_id:
+    if apply_hari and faseeh_id and hari_id:
         pair_key = tuple(sorted([faseeh_id, hari_id]))
         if pair_key not in pair_balances:
             pair_balances[pair_key] = {'amount': 0, 'details': []}
@@ -150,14 +163,27 @@ def get_user_summary(current_user_id):
     sudhakaran_id = next((uid for uid, name in users.items() if (name or '').lower() == 'sudhakaran'), None)
     hari_id = next((uid for uid, name in users.items() if (name or '').lower() == 'hari'), None)
     
-    if current_user_id == sudhakaran_id and faseeh_id:
+    # Check if they actually paid in the specific split
+    target_split = db.splits.find_one({'_id': 'SPL-20260812-213817-201A'})
+    apply_sudhakaran = False
+    apply_hari = False
+    
+    if target_split:
+        for stl in target_split.get('settlements', []):
+            if stl['status'] == 'pending':
+                if stl['fromUserId'] == sudhakaran_id and stl['toUserId'] == faseeh_id:
+                    apply_sudhakaran = True
+                if stl['fromUserId'] == hari_id and stl['toUserId'] == faseeh_id:
+                    apply_hari = True
+                    
+    if apply_sudhakaran and current_user_id == sudhakaran_id and faseeh_id:
         you_owe_dict[faseeh_id] = you_owe_dict.get(faseeh_id, 0) + 15
-    elif current_user_id == faseeh_id and sudhakaran_id:
+    elif apply_sudhakaran and current_user_id == faseeh_id and sudhakaran_id:
         owed_to_you_dict[sudhakaran_id] = owed_to_you_dict.get(sudhakaran_id, 0) + 15
         
-    if current_user_id == hari_id and faseeh_id:
+    if apply_hari and current_user_id == hari_id and faseeh_id:
         you_owe_dict[faseeh_id] = you_owe_dict.get(faseeh_id, 0) + 25
-    elif current_user_id == faseeh_id and hari_id:
+    elif apply_hari and current_user_id == faseeh_id and hari_id:
         owed_to_you_dict[hari_id] = owed_to_you_dict.get(hari_id, 0) + 25
     # -----------------------------
                 
