@@ -141,6 +141,7 @@ def get_user_summary(current_user_id):
             elif owed_amt > owe_amt:
                 owed_to_you_dict[user_id] = owed_amt - owe_amt
                 del you_owe_dict[user_id]
+            else:
                 del you_owe_dict[user_id]
                 del owed_to_you_dict[user_id]
                 
