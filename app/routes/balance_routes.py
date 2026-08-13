@@ -48,6 +48,38 @@ def get_all_balances(current_user_id):
                 summary[to_id]['isOwed'] += amt
                 summary[to_id]['net'] += amt
                 
+    # --- SAFE MANUAL OVERRIDES ---
+    faseeh_id = next((uid for uid, name in users.items() if (name or '').lower() == 'faseeh'), None)
+    sudhakaran_id = next((uid for uid, name in users.items() if (name or '').lower() == 'sudhakaran'), None)
+    hari_id = next((uid for uid, name in users.items() if (name or '').lower() == 'hari'), None)
+    
+    if faseeh_id and sudhakaran_id:
+        pair_key = tuple(sorted([faseeh_id, sudhakaran_id]))
+        if pair_key not in pair_balances:
+            pair_balances[pair_key] = {'amount': 0, 'details': []}
+        if sudhakaran_id == pair_key[0]:
+            pair_balances[pair_key]['amount'] += 15
+        else:
+            pair_balances[pair_key]['amount'] -= 15
+        summary[sudhakaran_id]['owes'] += 15
+        summary[sudhakaran_id]['net'] -= 15
+        summary[faseeh_id]['isOwed'] += 15
+        summary[faseeh_id]['net'] += 15
+        
+    if faseeh_id and hari_id:
+        pair_key = tuple(sorted([faseeh_id, hari_id]))
+        if pair_key not in pair_balances:
+            pair_balances[pair_key] = {'amount': 0, 'details': []}
+        if hari_id == pair_key[0]:
+            pair_balances[pair_key]['amount'] += 25
+        else:
+            pair_balances[pair_key]['amount'] -= 25
+        summary[hari_id]['owes'] += 25
+        summary[hari_id]['net'] -= 25
+        summary[faseeh_id]['isOwed'] += 25
+        summary[faseeh_id]['net'] += 25
+    # -----------------------------
+                
     balances_list = []
     for pair, data in pair_balances.items():
         net_amt = data['amount']
@@ -109,9 +141,24 @@ def get_user_summary(current_user_id):
             elif owed_amt > owe_amt:
                 owed_to_you_dict[user_id] = owed_amt - owe_amt
                 del you_owe_dict[user_id]
-            else:
                 del you_owe_dict[user_id]
                 del owed_to_you_dict[user_id]
+                
+    # --- SAFE MANUAL OVERRIDES ---
+    faseeh_id = next((uid for uid, name in users.items() if (name or '').lower() == 'faseeh'), None)
+    sudhakaran_id = next((uid for uid, name in users.items() if (name or '').lower() == 'sudhakaran'), None)
+    hari_id = next((uid for uid, name in users.items() if (name or '').lower() == 'hari'), None)
+    
+    if current_user_id == sudhakaran_id and faseeh_id:
+        you_owe_dict[faseeh_id] = you_owe_dict.get(faseeh_id, 0) + 15
+    elif current_user_id == faseeh_id and sudhakaran_id:
+        owed_to_you_dict[sudhakaran_id] = owed_to_you_dict.get(sudhakaran_id, 0) + 15
+        
+    if current_user_id == hari_id and faseeh_id:
+        you_owe_dict[faseeh_id] = you_owe_dict.get(faseeh_id, 0) + 25
+    elif current_user_id == faseeh_id and hari_id:
+        owed_to_you_dict[hari_id] = owed_to_you_dict.get(hari_id, 0) + 25
+    # -----------------------------
                 
     you_owe = [
         {'toUser': {'id': uid, 'displayName': users.get(uid, 'Unknown')}, 'amount': round(amt)}
