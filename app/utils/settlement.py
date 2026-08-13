@@ -41,14 +41,14 @@ def calculate_settlements(paid_by, split_among):
         
         settle_amount = min(debt_amount, credit_amount)
         
-        settle_amount = round(settle_amount)
+        rounded_settle_amount = round(settle_amount)
         
-        if settle_amount > 0:
+        if rounded_settle_amount > 0:
             settlements.append({
                 'id': f'STL-{settlement_counter:03d}',
                 'fromUserId': debtor['userId'],
                 'toUserId': creditor['userId'],
-                'amount': settle_amount,
+                'amount': rounded_settle_amount,
                 'status': 'pending',
                 'paidAt': None,
                 'note': '',

@@ -134,14 +134,20 @@ def get_split(current_user_id, split_id):
     return jsonify(split), 200
 
 @split_bp.route('/<split_id>', methods=['PUT'])
-@sa_required
-def update_split(current_user_id, current_user, split_id):
+@token_required
+def update_split(current_user_id, split_id):
     db = get_db()
     data = request.get_json()
     
     split = db.splits.find_one({'_id': split_id})
     if not split:
         return jsonify({'message': 'Split not found'}), 404
+        
+    user = db.users.find_one({'_id': current_user_id})
+    is_sa = user and user.get('userType') == 'sa'
+    
+    if not is_sa and split.get('createdBy') != current_user_id:
+        return jsonify({'message': 'Unauthorized to update this split'}), 403
         
     total_amount = float(data.get('totalAmount', split['totalAmount']))
     split_among = data.get('splitAmong', split['splitAmong'])
@@ -178,12 +184,18 @@ def update_split(current_user_id, current_user, split_id):
     return jsonify(updated_split), 200
 
 @split_bp.route('/<split_id>', methods=['DELETE'])
-@sa_required
-def delete_split(current_user_id, current_user, split_id):
+@token_required
+def delete_split(current_user_id, split_id):
     db = get_db()
     split = db.splits.find_one({'_id': split_id})
     if not split:
         return jsonify({'message': 'Split not found'}), 404
+        
+    user = db.users.find_one({'_id': current_user_id})
+    is_sa = user and user.get('userType') == 'sa'
+    
+    if not is_sa and split.get('createdBy') != current_user_id:
+        return jsonify({'message': 'Unauthorized to delete this split'}), 403
         
     db.splits.delete_one({'_id': split_id})
     
