@@ -33,10 +33,6 @@ def create_app(config_name='default'):
     mongo_client = MongoClient(mongo_uri)
     db = mongo_client.get_database('sp')
 
-    # Run direct DB migration
-    from app.utils.migration import run_migration
-    run_migration(db)
-
     # Setup indexes
     db.users.create_index([("username", pymongo.ASCENDING)], unique=True)
     db.users.create_index([("email", pymongo.ASCENDING)], unique=True)
